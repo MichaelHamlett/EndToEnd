@@ -12,9 +12,7 @@ class Client:
         return self.crypto.verify(msg, signature)
 
     def createGroupChat(self, addresses):
+        #TODO handle type2 message for the person creating the chat
         for recipient in addresses:
                 msg = self.crypto.type1Message(addresses, recipient)
-                #TODO: Send messages
-
-clientA = Client('A')
-clientA.createGroupChat('ABC')
+                #TODO: Send messages using network

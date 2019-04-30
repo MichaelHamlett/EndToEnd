@@ -15,7 +15,6 @@ class Encryption:
     def type1Message(self, groupAddresses, recipient):
         type = b'\x01' 
         salt = get_random_bytes(8)
-        print(salt)
         chatKey = get_random_bytes(32)
     
 
