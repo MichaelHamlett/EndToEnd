@@ -12,10 +12,9 @@ class Client:
         return self.crypto.verify(msg, signature)
 
     def createGroupChat(self, addresses):
-        print()
-
-
+        for recipient in addresses:
+                msg = self.crypto.type1Message(addresses, recipient)
+                #TODO: Send messages
 
 clientA = Client('A')
-pay = clientA.crypto.RSAOAEPencryption('A', 'mikey message')
-print(clientA.crypto.RSAOAEPdecryption(pay))
+clientA.createGroupChat('ABC')
