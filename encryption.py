@@ -4,6 +4,7 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP 
 from Crypto.Random import get_random_bytes
+from Crypto.Protocol.KDF import PBKDF2
 import util
 
 class Encryption:
@@ -31,8 +32,6 @@ class Encryption:
 
 
         #TODO: SAVE CHAT KEY for user
-
-    
         return (message, signature)
 
     def interpretType1(self, payload):
@@ -60,11 +59,10 @@ class Encryption:
 
         return (salt,key)
         
-
         
-
-        
-
+    def createGroupChatId(self, chatKey, salt):
+        chatId = PBKDF2(chatKey, salt, dkLen=len(chatKey), count=1000)
+        return chatId
 
     
 
