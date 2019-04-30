@@ -2,11 +2,12 @@ from base64 import b64encode, b64decode
 from Crypto.Signature import PKCS1_PSS
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
+import util
 
 class Encryption:
     def __init__(self, address):
         self.privKey = address + "keypair.pem"
-        self.pubKey = address + "pubkey.pem"
+        self.addressBook = util.load_obj('pubKeys')
 
     def sign(self, input):
         print(self.privKey)
@@ -36,10 +37,8 @@ class Encryption:
     def verify(self, input, signature):
         print('Checking signature...', end='')
 
-        # import the public key from the key file and create an RSA (PKCS1_PSS) verifier object
-        kfile = open(self.pubKey, 'r') 
-        keystr = kfile.read()
-        kfile.close()
+        # import the public key from the address book and create an RSA (PKCS1_PSS) verifier object
+        keystr = self.addressBook['A']
 
         pubkey = RSA.import_key(keystr)
         verifier = PKCS1_PSS.new(pubkey)
@@ -50,6 +49,7 @@ class Encryption:
         h.update(input)
 
         signature = b64decode(signature)
+        print(signature)
 
         # verify the signature
         result = verifier.verify(h, signature)
