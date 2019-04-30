@@ -1,5 +1,7 @@
 import pickle
 from Crypto.PublicKey import RSA 
+import time
+import datetime
 
 
 def save_obj(obj, name):
@@ -9,6 +11,22 @@ def save_obj(obj, name):
 def load_obj(name):
     with open('obj/' + name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+def generateTimestamp():
+        t = time.time()
+        timestamp = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
+
+        return timestamp
+
+def verifyTimestamp(timestamp):
+        '''
+        Check if the timestamps are the same, except for seconds
+        '''
+        t = time.time()
+        now = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
+
+        return now[:-2] == timestamp[:-2]
+
 
 def genKeys(address):
         """
@@ -33,3 +51,4 @@ def genKeys(address):
         pubKeyDict[address] = pubKey
 
         save_obj(pubKeyDict, 'pubKeys')
+
