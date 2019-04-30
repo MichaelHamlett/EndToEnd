@@ -2,6 +2,7 @@ from base64 import b64encode, b64decode
 from Crypto.Signature import PKCS1_PSS
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP 
 import util
 
 class Encryption:
@@ -9,6 +10,28 @@ class Encryption:
         self.privKey = address + "keypair.pem"
         self.addressBook = util.load_obj('pubKeys')
 
+    def RSAOAEPencryption(self, address, payload):
+        pubkeystr = self.addressBook[address]
+        pubkey = RSA.import_key(pubkeystr) 
+        cipher = PKCS1_OAEP.new(pubkey)
+        
+        RSAciphertext = cipher.encrypt(payload.encode('utf-8'))
+
+        return RSAciphertext
+
+    def RSAOAEPdecryption(self, encryptedPayload):
+        kfile = open(self.privKey, 'r') 
+        keystr = kfile.read()
+        kfile.close()
+
+        key = RSA.import_key(keystr) 
+        cipher = PKCS1_OAEP.new(key)
+
+        decryptedPayload = cipher.decrypt(encryptedPayload) 
+        return decryptedPayload.decode('utf-8')
+
+
+    
     def sign(self, input):
         print(self.privKey)
 
