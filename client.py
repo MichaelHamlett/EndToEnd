@@ -72,3 +72,21 @@ class Client:
 
             if msg[0] == 2:
                 print(self.crypto.interpretType2(msg))
+
+    def testRun(self):
+            netif = network_interface(self.NET_PATH, self.OWN_ADDR)
+            status, msg = netif.receive_msg(blocking=True)		# when returns, status is True and msg contains a message 
+
+            if msg[0] == 1:
+                salt, chatKey, addresses = self.crypto.interpretType1(msg)
+                chatId = self.crypto.createGroupChatId(chatKey, salt)
+                self.chatIDs = util.load_obj(self.OWN_ADDR + 'chatIDs')
+                self.chatIDs[addresses.decode('utf-8')] = chatId
+                util.save_obj(self.chatIDs, self.OWN_ADDR + 'chatIDs')
+
+                self.joinChat(chatId)
+                return ('Group Chat', addresses.decode('utf-8'))
+
+
+            if msg[0] == 2:
+                return self.crypto.interpretType2(msg)

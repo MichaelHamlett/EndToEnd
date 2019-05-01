@@ -169,7 +169,7 @@ class Encryption:
 
         decryptedPayload = self.CBCDecryption(encryptedPayload, chatKey, iv)
 
-        return (sender, decryptedPayload)
+        return (sender, decryptedPayload.decode('utf-8'))
 
     
 
