@@ -5,6 +5,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP 
 from Crypto.Random import get_random_bytes
 from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Cipher import AES
 import util
 
 class Encryption:
@@ -57,18 +58,119 @@ class Encryption:
         salt = decryptedMsg[:8]
         key = decryptedMsg[8:40]
 
-        return (salt,key)
+        return (salt,key, addresses)
         
         
     def createGroupChatId(self, chatKey, salt):
+        '''
+        generates group chatId and saves chatKey to local dictionary
+        '''
         chatId = PBKDF2(chatKey, salt, dkLen=len(chatKey), count=1000)
+
+        chats = util.load_obj("chats")
+        chats[chatId] = chatKey
+        util.save_obj(chats, 'chats')
+
         return chatId
+
+    def type3Message(self, chatKey, salt):
+        type = b'\x03' 
+        senderAddress = self.address.encode('utf-8')
+        timestamp = util.generateTimestamp().encode('utf-8')
+
+        chatId = self.createGroupChatId(chatKey, salt)
+
+        encryptedChatId = self.RSAOAEPencryption('S', chatId)
+
+        header = type + senderAddress + timestamp
+
+        payload = header + encryptedChatId
+
+        signature = self.sign(payload)
+
+        return (payload, signature)
+
+    def interpretType3(self, payload):
+        '''
+        must be called by the server
+        '''
+        msg = payload[0]
+        signature = payload[1]
+
+        if not self.verify(msg, signature):
+            return 
+
+        sender = msg[1:2]
+        timestamp = msg[2:21]
+
+        #Verify timestamp
+        if not util.verifyTimestamp(timestamp.decode('utf-8')):
+            print("timestamp not verified")
+            return
+
+        encryptedChatId = msg[21:]
+
+        chatId = self.RSAOAEPdecryption(encryptedChatId)
+
+        return (sender, chatId)
+
+    def type2Message(self, message, chatId):
+        type = b'\x02' 
+        senderAddress = self.address.encode('utf-8')
+        timestamp = util.generateTimestamp().encode('utf-8')
+        iv = get_random_bytes(AES.block_size)
+
+        chats = util.load_obj("chats")
+        chatKey = chats[chatId]
+
+        encryptedMsg = self.CBCEncryption(message, chatKey, iv)
+
+        header = type + senderAddress + iv + timestamp + chatId
+
+        payload = header + encryptedMsg
+
+        signature = self.sign(payload)
+
+        return (payload, signature)
+
+
+
+    def interpretType2(self, message):
+        payload = message[0]
+        signature = message[1]
+
+        if not self.verify(payload, signature):
+            return 
+
+        sender = payload[1:2]
+        iv = payload[2:2+AES.block_size]
+        timestamp = payload[2+AES.block_size:21+AES.block_size]
+        chatId = payload[21+AES.block_size:53+AES.block_size]
+        encryptedPayload = payload[53+AES.block_size:]
+
+        #Verify timestamp
+        if not util.verifyTimestamp(timestamp.decode('utf-8')):
+            print("timestamp not verified")
+            return
+
+        chats = util.load_obj("chats")
+        chatKey = chats[chatId]
+
+        decryptedPayload = self.CBCDecryption(encryptedPayload, chatKey, iv)
+
+        return (sender, decryptedPayload)
+
+    
+
+
+
 
     
 
     def RSAOAEPencryption(self, address, payload):
         '''
         payload is bytes object
+        address is the receiving address
         '''
         pubkeystr = self.addressBook[address]
         pubkey = RSA.import_key(pubkeystr) 
@@ -92,6 +194,35 @@ class Encryption:
         decryptedPayload = cipher.decrypt(encryptedPayload) 
 
         return decryptedPayload
+
+    def CBCEncryption(self, payload, enckey, iv):
+        payload_length = len(payload)
+        padding_length = AES.block_size - (payload_length)%AES.block_size
+        padding = b'\x80' + b'\x00'*(padding_length-1)
+
+        payload = payload.encode('utf-8')
+        ENC= AES.new(enckey, AES.MODE_CBC, iv)
+        encrypted = ENC.encrypt(payload + padding)
+
+        return encrypted
+
+    def CBCDecryption(self, payload, enckey, iv):
+        ENC = AES.new(enckey, AES.MODE_CBC, iv)       # create AES cipher object
+        decrypted = ENC.decrypt(payload) # decrypt the encrypted part of the message
+
+        # remove and check padding
+        i = -1
+        while (decrypted[i] == 0x00): i -= 1
+        padding = decrypted[i:]
+        decrypted = decrypted[:i]
+        print("Padding " + padding.hex() + " is observed.")
+        if (padding[0] != 0x80):
+            print("Error: Wrong padding detected!")
+            print("Processing completed.")
+
+        print("Padding is successfully removed.")
+
+        return decrypted
 
 
     def sign(self, input):
