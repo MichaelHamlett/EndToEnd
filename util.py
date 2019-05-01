@@ -2,12 +2,11 @@ import pickle
 from Crypto.PublicKey import RSA 
 import time
 import datetime
-import os
 
 
 def save_obj(obj, name):
-    with open('obj/'+ name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        with open('obj/'+ name + '.pkl', 'wb') as f:
+                pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 def load_obj(name):
         with open('obj/' + name + '.pkl', 'rb') as f:
@@ -53,14 +52,3 @@ def genKeys(address):
         pubKeyDict[address] = pubKey
 
         save_obj(pubKeyDict, 'pubKeys')
-
-
-save_obj({}, 'AchatKeys')
-save_obj({}, 'BchatKeys')
-save_obj({}, 'CchatKeys')
-save_obj({}, 'AchatIDs')
-save_obj({}, 'BchatIDs')
-save_obj({}, 'CchatIDs')
-save_obj({}, 'AChats')
-save_obj({}, 'BChats')
-save_obj({}, 'CChats')
