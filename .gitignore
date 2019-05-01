@@ -2,3 +2,8 @@
 __pycache__/
 obj/
 .DS_Store
+runClient.py
+runClientB.py
+runClientC.py
+runServer.py
+main.py
