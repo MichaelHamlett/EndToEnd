@@ -2,6 +2,7 @@ import pickle
 from Crypto.PublicKey import RSA 
 import time
 import datetime
+import os
 
 
 def save_obj(obj, name):
@@ -9,8 +10,9 @@ def save_obj(obj, name):
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 def load_obj(name):
-    with open('obj/' + name + '.pkl', 'rb') as f:
-        return pickle.load(f)
+        with open('obj/' + name + '.pkl', 'rb') as f:
+                return pickle.load(f)
+
 
 def generateTimestamp():
         t = time.time()
@@ -52,3 +54,13 @@ def genKeys(address):
 
         save_obj(pubKeyDict, 'pubKeys')
 
+
+save_obj({}, 'AchatKeys')
+save_obj({}, 'BchatKeys')
+save_obj({}, 'CchatKeys')
+save_obj({}, 'AchatIDs')
+save_obj({}, 'BchatIDs')
+save_obj({}, 'CchatIDs')
+save_obj({}, 'AChats')
+save_obj({}, 'BChats')
+save_obj({}, 'CChats')

@@ -14,11 +14,16 @@ class Encryption:
         self.privKey = address + "keypair.pem"
         self.addressBook = util.load_obj('pubKeys')
 
-    def type1Message(self, groupAddresses, recipient):
+
+    def genSymKey(self):
+        return get_random_bytes(32)
+
+    def genSalt(self):
+        return get_random_bytes(8)
+
+    def type1Message(self, groupAddresses, recipient, salt, chatKey):
         type = b'\x01' 
-        salt = get_random_bytes(8)
-        chatKey = get_random_bytes(32)
-    
+        sender = self.address.encode('utf-8')
 
         encryptionPayload = salt + chatKey
 
@@ -26,33 +31,35 @@ class Encryption:
             encryptionPayload)
 
         timestamp = util.generateTimestamp().encode('utf-8')    
-        header = type + groupAddresses.encode('utf-8') + timestamp
+        header = type + sender + groupAddresses.encode('utf-8') + timestamp
         message = header + cipherText
 
         signature = self.sign(message)
 
 
         #TODO: SAVE CHAT KEY for user
-        return (message, signature)
+        return message + signature
 
     def interpretType1(self, payload):
-        msg = payload[0]
-        signature = payload[1]
+        msg = payload[:536]
+        signature = payload[536:]
 
-        if not self.verify(msg, signature):
+        sender = msg[1:2].decode('utf-8')
+        
+        if not self.verify(msg, signature, sender):
             return 
 
         #group chats are limited to three addresses right now
         groupSize = 3
-        addresses = msg[1:1+groupSize]
-        timestamp = msg[1+groupSize:1+groupSize+19]
+        addresses = msg[2:2+groupSize]
+        timestamp = msg[2+groupSize:2+groupSize+19]
        
         #Verify timestamp
         if not util.verifyTimestamp(timestamp.decode('utf-8')):
             print("timestamp not verified")
             return
 
-        encryptedMsg = msg[1+groupSize+19:]
+        encryptedMsg = msg[2+groupSize+19:]
         decryptedMsg = self.RSAOAEPdecryption(encryptedMsg)
 
         salt = decryptedMsg[:8]
@@ -67,18 +74,16 @@ class Encryption:
         '''
         chatId = PBKDF2(chatKey, salt, dkLen=len(chatKey), count=1000)
 
-        chats = util.load_obj("chats")
+        chats = util.load_obj(self.address + 'chatKeys')
         chats[chatId] = chatKey
-        util.save_obj(chats, 'chats')
+        util.save_obj(chats, self.address + 'chatKeys')
 
         return chatId
 
-    def type3Message(self, chatKey, salt):
+    def type3Message(self, chatId):
         type = b'\x03' 
         senderAddress = self.address.encode('utf-8')
         timestamp = util.generateTimestamp().encode('utf-8')
-
-        chatId = self.createGroupChatId(chatKey, salt)
 
         encryptedChatId = self.RSAOAEPencryption('S', chatId)
 
@@ -88,19 +93,21 @@ class Encryption:
 
         signature = self.sign(payload)
 
-        return (payload, signature)
+
+        return payload + signature
 
     def interpretType3(self, payload):
         '''
         must be called by the server
         '''
-        msg = payload[0]
-        signature = payload[1]
+        msg = payload[:533]
+        signature = payload[533:]
 
-        if not self.verify(msg, signature):
+        sender = msg[1:2].decode('utf-8')
+        if not self.verify(msg, signature, sender):
             return 
 
-        sender = msg[1:2]
+        
         timestamp = msg[2:21]
 
         #Verify timestamp
@@ -120,50 +127,49 @@ class Encryption:
         timestamp = util.generateTimestamp().encode('utf-8')
         iv = get_random_bytes(AES.block_size)
 
-        chats = util.load_obj("chats")
+        chats = util.load_obj(self.address + "chatKeys")
         chatKey = chats[chatId]
 
         encryptedMsg = self.CBCEncryption(message, chatKey, iv)
+        length = len(encryptedMsg).to_bytes(2, byteorder='big')
 
-        header = type + senderAddress + iv + timestamp + chatId
+        header = type + senderAddress + iv + timestamp + chatId + length
 
         payload = header + encryptedMsg
 
         signature = self.sign(payload)
 
-        return (payload, signature)
+        return payload + signature
 
 
 
-    def interpretType2(self, message):
-        payload = message[0]
-        signature = message[1]
+    def interpretType2(self, payload):
+        header = payload[:71]
+        sender = payload[1:2].decode('utf-8')
+        
 
-        if not self.verify(payload, signature):
+        iv = header[2:2+AES.block_size]
+        timestamp = header[2+AES.block_size:21+AES.block_size]
+        chatId = header[21+AES.block_size:53+AES.block_size]
+        msgLength = header[53+AES.block_size:55+AES.block_size]
+        msgLength = int.from_bytes(msgLength, 'big')
+        encryptedPayload = payload[71:71+msgLength]
+        signature = payload[71+msgLength:]
+
+        if not self.verify(payload[:71+msgLength], signature, sender):
             return 
-
-        sender = payload[1:2]
-        iv = payload[2:2+AES.block_size]
-        timestamp = payload[2+AES.block_size:21+AES.block_size]
-        chatId = payload[21+AES.block_size:53+AES.block_size]
-        encryptedPayload = payload[53+AES.block_size:]
-
+        
         #Verify timestamp
         if not util.verifyTimestamp(timestamp.decode('utf-8')):
             print("timestamp not verified")
             return
 
-        chats = util.load_obj("chats")
+        chats = util.load_obj(self.address + 'chatKeys')
         chatKey = chats[chatId]
 
         decryptedPayload = self.CBCDecryption(encryptedPayload, chatKey, iv)
 
         return (sender, decryptedPayload)
-
-    
-
-
-
 
     
 
@@ -246,18 +252,17 @@ class Encryption:
         signature = signer.sign(h)
 
         encodedSignature = b64encode(signature)
-        #print(encodedSignature)
 
         return encodedSignature
 
-    def verify(self, input, signature):
+    def verify(self, input, signature, sender):
         '''
         input should be bytes
         '''
         print('Checking signature...', end='')
 
         # import the public key from the address book and create an RSA (PKCS1_PSS) verifier object
-        keystr = self.addressBook['A']
+        keystr = self.addressBook[sender]
 
         pubkey = RSA.import_key(keystr)
         verifier = PKCS1_PSS.new(pubkey)
@@ -267,7 +272,6 @@ class Encryption:
         h.update(input)
 
         signature = b64decode(signature)
-        #print(signature)
 
         # verify the signature
         result = verifier.verify(h, signature)
