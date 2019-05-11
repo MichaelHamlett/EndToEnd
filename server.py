@@ -2,12 +2,14 @@ from encryption import Encryption
 from Crypto.Cipher import AES
 import os, sys, getopt, time
 from netinterface import network_interface
+import util
+
+CHAT_IDS = 'SchatIDs'
 
 class Server:
     def __init__(self):
         self.OWN_ADDR = 'S'
         self.NET_PATH = './network/'
-        self.chatIDs = {}
 
         if (self.NET_PATH[-1] != '/') and (self.NET_PATH[-1] != '\\'): self.NET_PATH += '/'
 
@@ -39,14 +41,19 @@ class Server:
             
             if msg[0] == 3:
                 sender, chatId = self.crypto.interpretType3(msg)
-                if chatId not in self.chatIDs:
-                    self.chatIDs[chatId] = [sender]
+                chatIDs = util.load_obj(CHAT_IDS)
+                if chatId not in chatIDs:
+                    chatIDs[chatId] = [sender]
                 else:
-                    self.chatIDs[chatId] += [sender]
+                    chatIDs[chatId] += [sender]
+
+                util.save_obj(chatIDs, CHAT_IDS)
+                print(chatIDs)
 
             if msg[0] == 2:
+                chatIDs = util.load_obj(CHAT_IDS)
                 chatId = msg[21+AES.block_size:53+AES.block_size]
-                addresses = self.chatIDs[chatId]
+                addresses = chatIDs[chatId]
                 self.forwardMessages(msg, addresses)
 
           
