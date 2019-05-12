@@ -1,5 +1,6 @@
 import pickle
 from Crypto.PublicKey import RSA 
+from dateutil import parser
 import time
 import datetime
 
@@ -13,6 +14,30 @@ def load_obj(name):
                 return pickle.load(f)
 
 
+def convertToMins(tStamp):
+        minutes = int(tStamp[-5:-3])
+        seconds = int(tStamp[-2:]) + (minutes * 60)
+        return seconds
+
+
+def calculateTimeDifference(tStamp1, tStamp2):
+        '''
+        returns true if tStamp2 is within 30 seconds of tStamp1
+        '''
+        tStamp1 = convertToMins(tStamp1)
+        tStamp2 = convertToMins(tStamp2)
+
+        if (tStamp2 - tStamp1 < 30):
+                return True
+        return False
+
+# Format:
+# yyyy-mm-dd hh:mm:ss
+# example
+# 2019-05-12 13:14:43
+
+#later, parse timestamp back to datetime obj
+#dtobject = parser.parse(timestamp)
 def generateTimestamp():
         t = time.time()
         timestamp = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
@@ -26,8 +51,10 @@ def verifyTimestamp(timestamp):
         t = time.time()
         now = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
 
-        return now[:-2] == timestamp[:-2]
-
+        #If timestamps are on same day, check seconds
+        if (now[:11] == timestamp[:11]):
+                return calculateTimeDifference(timestamp,now)
+        return False
 
 def genKeys(address):
         """
