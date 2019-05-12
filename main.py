@@ -22,7 +22,7 @@ def str2bool(v):
 try:
 	opts, args = getopt.getopt(sys.argv[1:], shortopts='ha:g:c:', longopts=['help', 'addr=', 'group=', 'creator='])
 except getopt.GetoptError:
-	print('Usage: python main.py -a <network path> -g <own addr> -c <creator>')
+	print('Usage: python main.py -a <own addr> -g <group addresses> -c <creator>')
 	sys.exit(1)
 
 for opt, arg in opts:
