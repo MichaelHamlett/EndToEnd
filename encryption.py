@@ -7,6 +7,9 @@ from Crypto.Random import get_random_bytes
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 import util
+import sys
+
+ADDRESS_SPACE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 class Encryption:
     def __init__(self, address):
@@ -30,6 +33,8 @@ class Encryption:
         cipherText = self.RSAOAEPencryption(recipient, 
             encryptionPayload)
 
+        print(groupAddresses.encode('utf-8'))
+
         timestamp = util.generateTimestamp().encode('utf-8')    
         header = type + sender + groupAddresses.encode('utf-8') + timestamp
         message = header + cipherText
@@ -41,17 +46,30 @@ class Encryption:
         return message + signature
 
     def interpretType1(self, payload):
-        msg = payload[:536]
-        signature = payload[536:]
+        groupSize = 0
+        i = 2
+        print(payload[i])
+        while chr(payload[i]) in ADDRESS_SPACE:
+            print(str(payload[i]))
+            i += 1
 
+        #group chats are limited to three addresses right now
+        groupSize = i-2
+        addresses = payload[2:2+groupSize]
+        
+        if groupSize > 9:
+            print("Groups must be smaller than 10")
+            sys.exit()
+
+        msg = payload[:533+groupSize]
+        signature = payload[533+groupSize:]
         sender = msg[1:2].decode('utf-8')
         
         if not self.verify(msg, signature, sender):
             return 
 
-        #group chats are limited to three addresses right now
-        groupSize = 3
-        addresses = msg[2:2+groupSize]
+
+        print(addresses)
         timestamp = msg[2+groupSize:2+groupSize+19]
        
         #Verify timestamp
