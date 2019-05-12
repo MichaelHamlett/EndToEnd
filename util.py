@@ -19,7 +19,11 @@ def convertToMins(tStamp):
         seconds = int(tStamp[-2:]) + (minutes * 60)
         return seconds
 
+
 def calculateTimeDifference(tStamp1, tStamp2):
+        '''
+        returns true if tStamp2 is within 30 seconds of tStamp1
+        '''
         tStamp1 = convertToMins(tStamp1)
         tStamp2 = convertToMins(tStamp2)
 
@@ -47,6 +51,7 @@ def verifyTimestamp(timestamp):
         t = time.time()
         now = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
 
+        #If timestamps are on same day, check seconds
         if (now[:11] == timestamp[:11]):
                 return calculateTimeDifference(timestamp,now)
         return False
