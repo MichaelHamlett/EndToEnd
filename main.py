@@ -7,9 +7,11 @@ import time
 from threading import Thread
 import tkinter
 
-GRP = 'ABC'
+GRP = 'ABCD'
 OWN_ADDR = 'A'
 CREATOR = False
+groupSize = 0
+MAX_PARTICIPANTS = 9
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -49,7 +51,7 @@ def receive():
     """Handles receiving of messages."""
     while True:
         try:
-            address, msg = client.testRun()
+            address, msg = client.runClient()
             print(address, msg)
             msg_list.insert(tkinter.END, address + ": " + msg)
         except OSError:  # Possibly client has left the chat.
@@ -60,13 +62,17 @@ def on_closing(event=None):
     my_msg.set("{quit}")
     send()
 
+groupSize = len(GRP)
+if(groupSize > MAX_PARTICIPANTS):
+    print("Too many participants!\nThe limit is %d and your group has %d participants.\nThe program will now exit.\n" % (MAX_PARTICIPANTS, groupSize))
+    sys.exit(0)
 
 client = Client(OWN_ADDR)
 receive_thread = Thread(target=receive)
 receive_thread.start()
+
 if CREATOR:
     client.createGroupChat(GRP)
-
 
 top = tkinter.Tk()
 top.title("EndToEnd")
