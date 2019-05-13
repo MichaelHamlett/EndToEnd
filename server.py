@@ -56,8 +56,6 @@ class Server:
                 addresses = chatIDs[chatId]
                 self.forwardMessages(msg, addresses)
 
-          
-
     def sendMessage(self, msg, addresses):
         netif = network_interface(self.NET_PATH, self.OWN_ADDR)
         for dst in addresses:

@@ -1,6 +1,5 @@
 import pickle
 from Crypto.PublicKey import RSA 
-from dateutil import parser
 import time
 import datetime
 
@@ -31,13 +30,6 @@ def calculateTimeDifference(tStamp1, tStamp2):
                 return True
         return False
 
-# Format:
-# yyyy-mm-dd hh:mm:ss
-# example
-# 2019-05-12 13:14:43
-
-#later, parse timestamp back to datetime obj
-#dtobject = parser.parse(timestamp)
 def generateTimestamp():
         t = time.time()
         timestamp = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
@@ -50,11 +42,12 @@ def verifyTimestamp(timestamp):
         '''
         t = time.time()
         now = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
-
+        
         #If timestamps are on same day, check seconds
         if (now[:11] == timestamp[:11]):
                 return calculateTimeDifference(timestamp,now)
         return False
+
 
 def genKeys(address):
         """

@@ -17,7 +17,6 @@ for opt, arg in opts:
     elif opt == '-a' or opt == '--addr':
 	    ADDR = arg
 
-
 #create a directory of public keys if it is not created already
 exists = os.path.isfile('/obj/pubKeys.pkl')
 if not exists:
