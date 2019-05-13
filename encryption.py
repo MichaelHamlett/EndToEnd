@@ -7,6 +7,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 import util
+import sys
 
 class Encryption:
     def __init__(self, address):
@@ -25,47 +26,69 @@ class Encryption:
         type = b'\x01' 
         sender = self.address.encode('utf-8')
 
+        #could introduce error handling here for groupSize larger than 8
+        groupSize = str(len(groupAddresses))
+
+
         encryptionPayload = salt + chatKey
 
         cipherText = self.RSAOAEPencryption(recipient, 
             encryptionPayload)
 
         timestamp = util.generateTimestamp().encode('utf-8')    
-        header = type + sender + groupAddresses.encode('utf-8') + timestamp
+        header = type + sender + groupSize.encode('utf-8') + groupAddresses.encode('utf-8') + timestamp
         message = header + cipherText
 
         signature = self.sign(message)
-
 
         #TODO: SAVE CHAT KEY for user
         return message + signature
 
     def interpretType1(self, payload):
-        msg = payload[:536]
-        signature = payload[536:]
 
-        sender = msg[1:2].decode('utf-8')
+        #groupSize = payload[typeLen + senderLen + groupSizeLen]
+        groupSize = int(payload[2:3])
+
+        #timestamp will always have len of 19
+        timestampLen = 19
+
+        #parse header from payload
+        header = payload[:2 + groupSize + timestampLen]
+
+        #calculate len of header
+        headerLen = len(header)
+
+        #parse sender from header
+        sender =  header[1:2].decode('utf-8')
+
+        '''
+        originally 536 assuming 3 group members
+        534 to account for groupSize in header
+        separate payload into msg and sig
+        '''
+        msg = payload[:534 + groupSize]
+        signature = payload[534 + groupSize:]
         
         if not self.verify(msg, signature, sender):
             return 
 
-        #group chats are limited to three addresses right now
-        groupSize = 3
-        addresses = msg[2:2+groupSize]
-        timestamp = msg[2+groupSize:2+groupSize+19]
+        #group chats are limited to 8 addresses right now
+
+        addresses = msg[headerLen - groupSize - timestampLen +1: headerLen - timestampLen+1]
+        timestamp = msg[headerLen - timestampLen+1:headerLen+1]
        
         #Verify timestamp
         if not util.verifyTimestamp(timestamp.decode('utf-8')):
             print("timestamp not verified")
             return
 
-        encryptedMsg = msg[2+groupSize+19:]
+        encryptedMsg = msg[headerLen + 1:]
         decryptedMsg = self.RSAOAEPdecryption(encryptedMsg)
 
         salt = decryptedMsg[:8]
         key = decryptedMsg[8:40]
 
-        return (salt,key, addresses)
+        return (salt,key, addresses, len(addresses))
         
         
     def createGroupChatId(self, chatKey, salt):
@@ -80,46 +103,52 @@ class Encryption:
 
         return chatId
 
-    def type3Message(self, chatId):
+
+    #add numGroupMembers to header
+    def type3Message(self, chatId, numParticipants):
         type = b'\x03' 
         senderAddress = self.address.encode('utf-8')
         timestamp = util.generateTimestamp().encode('utf-8')
 
+
         encryptedChatId = self.RSAOAEPencryption('S', chatId)
 
-        header = type + senderAddress + timestamp
+        header = type + senderAddress + str(numParticipants).encode('utf-8') + timestamp
 
         payload = header + encryptedChatId
 
         signature = self.sign(payload)
 
-
         return payload + signature
 
+    #parse groupNo. from payload
     def interpretType3(self, payload):
         '''
         must be called by the server
         '''
-        msg = payload[:533]
-        signature = payload[533:]
+        groupSize = int(payload[2:3].decode('utf-8'))
+        msg = payload[:534]
+        signature = payload[534:]
 
         sender = msg[1:2].decode('utf-8')
+
         if not self.verify(msg, signature, sender):
             return 
 
-        
-        timestamp = msg[2:21]
+        timestamp = msg[3:22]
 
         #Verify timestamp
         if not util.verifyTimestamp(timestamp.decode('utf-8')):
             print("timestamp not verified")
             return
 
-        encryptedChatId = msg[21:]
+        encryptedChatId = msg[22:]
 
         chatId = self.RSAOAEPdecryption(encryptedChatId)
 
-        return (sender, chatId)
+
+        ##return no. participants as well
+        return (sender, chatId, groupSize)
 
     def type2Message(self, message, chatId):
         type = b'\x02' 

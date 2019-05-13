@@ -40,15 +40,20 @@ class Server:
             status, msg = netif.receive_msg(blocking=True)      
             
             if msg[0] == 3:
-                sender, chatId = self.crypto.interpretType3(msg)
+
+                sender, chatId, numParticipants = self.crypto.interpretType3(msg)
                 chatIDs = util.load_obj(CHAT_IDS)
-                if chatId not in chatIDs:
+
+
+                if chatId not in chatIDs :
                     chatIDs[chatId] = [sender]
-                else:
+                #if chatIDs dictionary not full
+                elif(numParticipants > len(chatIDs[chatId])):
                     chatIDs[chatId] += [sender]
 
                 util.save_obj(chatIDs, CHAT_IDS)
-                print(chatIDs)
+                # else:  
+                    #error handling
 
             if msg[0] == 2:
                 chatIDs = util.load_obj(CHAT_IDS)
