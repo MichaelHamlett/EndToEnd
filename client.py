@@ -43,8 +43,8 @@ class Client:
                 msg = self.crypto.type1Message(addresses, recipient, salt, chatKey)
                 self.sendMessage(msg, recipient)
 
-    def joinChat(self, chatId):
-        msg = self.crypto.type3Message(chatId)
+    def joinChat(self, chatId, chatSize):
+        msg = self.crypto.type3Message(chatId, chatSize)
         self.sendMessage(msg, 'S')
 
     def sendMessage(self, msg, addresses):
@@ -62,12 +62,13 @@ class Client:
 
             if msg[0] == 1:
                 salt, chatKey, addresses = self.crypto.interpretType1(msg)
+                chatSize = len(addresses)
                 chatId = self.crypto.createGroupChatId(chatKey, salt)
                 self.chatIDs = util.load_obj(self.OWN_ADDR + 'chatIDs')
                 self.chatIDs[addresses.decode('utf-8')] = chatId
                 util.save_obj(self.chatIDs, self.OWN_ADDR + 'chatIDs')
 
-                self.joinChat(chatId)
+                self.joinChat(chatId, chatSize)
 
 
             if msg[0] == 2:
@@ -79,12 +80,13 @@ class Client:
 
             if msg[0] == 1:
                 salt, chatKey, addresses = self.crypto.interpretType1(msg)
+                chatSize = len(addresses)
                 chatId = self.crypto.createGroupChatId(chatKey, salt)
                 self.chatIDs = util.load_obj(self.OWN_ADDR + 'chatIDs')
                 self.chatIDs[addresses.decode('utf-8')] = chatId
                 util.save_obj(self.chatIDs, self.OWN_ADDR + 'chatIDs')
 
-                self.joinChat(chatId)
+                self.joinChat(chatId, chatSize)
                 return ('Group Chat', addresses.decode('utf-8'))
 
 

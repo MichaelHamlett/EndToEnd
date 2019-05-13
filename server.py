@@ -40,15 +40,17 @@ class Server:
             status, msg = netif.receive_msg(blocking=True)      
             
             if msg[0] == 3:
-                sender, chatId = self.crypto.interpretType3(msg)
+                sender, chatId, chatSize = self.handleType3(msg)
                 chatIDs = util.load_obj(CHAT_IDS)
+
                 if chatId not in chatIDs:
                     chatIDs[chatId] = [sender]
-                else:
+                elif len(chatIDs[chatId]) < int(chatSize):
                     chatIDs[chatId] += [sender]
+                else:
+                    print('Too many people in chat')
 
                 util.save_obj(chatIDs, CHAT_IDS)
-                print(chatIDs)
 
             if msg[0] == 2:
                 chatIDs = util.load_obj(CHAT_IDS)

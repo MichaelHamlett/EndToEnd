@@ -33,7 +33,6 @@ class Encryption:
         cipherText = self.RSAOAEPencryption(recipient, 
             encryptionPayload)
 
-        print(groupAddresses.encode('utf-8'))
 
         timestamp = util.generateTimestamp().encode('utf-8')    
         header = type + sender + groupAddresses.encode('utf-8') + timestamp
@@ -48,9 +47,7 @@ class Encryption:
     def interpretType1(self, payload):
         groupSize = 0
         i = 2
-        print(payload[i])
         while chr(payload[i]) in ADDRESS_SPACE:
-            print(str(payload[i]))
             i += 1
 
         #group chats are limited to three addresses right now
@@ -69,7 +66,6 @@ class Encryption:
             return 
 
 
-        print(addresses)
         timestamp = msg[2+groupSize:2+groupSize+19]
        
         #Verify timestamp
@@ -98,14 +94,15 @@ class Encryption:
 
         return chatId
 
-    def type3Message(self, chatId):
+    def type3Message(self, chatId, chatSize):
         type = b'\x03' 
         senderAddress = self.address.encode('utf-8')
         timestamp = util.generateTimestamp().encode('utf-8')
+        chatSize = str(chatSize).encode('utf-8')
 
         encryptedChatId = self.RSAOAEPencryption('S', chatId)
 
-        header = type + senderAddress + timestamp
+        header = type + senderAddress + timestamp + chatSize
 
         payload = header + encryptedChatId
 
@@ -118,8 +115,8 @@ class Encryption:
         '''
         must be called by the server
         '''
-        msg = payload[:533]
-        signature = payload[533:]
+        msg = payload[:534]
+        signature = payload[534:]
 
         sender = msg[1:2].decode('utf-8')
         if not self.verify(msg, signature, sender):
@@ -127,17 +124,19 @@ class Encryption:
 
         
         timestamp = msg[2:21]
+        chatSize = msg[21:22]
 
         #Verify timestamp
         if not util.verifyTimestamp(timestamp.decode('utf-8')):
             print("timestamp not verified")
             return
 
-        encryptedChatId = msg[21:]
+
+        encryptedChatId = msg[22:]
 
         chatId = self.RSAOAEPdecryption(encryptedChatId)
 
-        return (sender, chatId)
+        return (sender, chatId, chatSize)
 
     def type2Message(self, message, chatId):
         type = b'\x02' 
